@@ -1,4 +1,4 @@
-name = "versus-relay"
+name = "puzzle-attack"
 main = "src/worker.mjs"
 compatibility_date = "2025-09-01"
 

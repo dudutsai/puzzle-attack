@@ -84,7 +84,7 @@ export default {
       if (!CODE_RE.test(code)) return new Response("bad code", { status: 400, headers: cors });
       return env.ROOMS.get(env.ROOMS.idFromName(code)).fetch(req);
     }
-    if (url.pathname === "/") return new Response("versus relay ok", { headers: cors });
+    if (url.pathname === "/") return new Response("Puzzle Attack relay ok", { headers: cors });
     return new Response("not found", { status: 404, headers: cors });
   },
 };

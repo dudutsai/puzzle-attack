@@ -39,7 +39,7 @@ export function startServer({ port = 0, delay = 0, jitter = 0 } = {}) {
       rooms.set(code, { st: newRoom(), socks: [null, null] });
       res.writeHead(200, { ...cors, "content-type": "application/json" }); return res.end(JSON.stringify({ code }));
     }
-    res.writeHead(200, cors); res.end("versus relay ok");
+    res.writeHead(200, cors); res.end("Puzzle Attack relay ok");
   });
   const send = (sock, raw) => {
     if (sock.destroyed) return;
@@ -81,5 +81,5 @@ export function startServer({ port = 0, delay = 0, jitter = 0 } = {}) {
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const s = await startServer({ port: +process.argv[2] || 8787 });
-  console.log("versus relay listening on http://localhost:" + s.port);
+  console.log("Puzzle Attack relay listening on http://localhost:" + s.port);
 }

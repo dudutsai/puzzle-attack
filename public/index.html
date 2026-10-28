@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Versus prototype</title>
+<title>Puzzle Attack</title>
 <style>
 :root{--bg:#f2f4f7;--panel:#e3e7ee;--ink:#1b2433;--grid:#d3d9e3;--muted:#5a667a;--accent:#2a6df4;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -58,7 +58,7 @@ button{transition:transform .08s,filter .15s}button:hover{filter:brightness(1.1)
 <div class="stat"><span>Incoming</span><b id="iR">0</b></div><div class="stat"><span id="kR">Info</span><b id="fR"></b></div>
 <div class="port"><div class="art" id="paR"></div><div class="nm" id="pnR"></div><div class="say" id="psR" aria-live="polite"></div></div></div></div>
 <p id="hR"></p></div>
-<aside><h1>Versus prototype</h1><div class="stat"><span>Seed</span><b id="sd">0</b></div>
+<aside><h1>Puzzle Attack</h1><div class="stat"><span>Seed</span><b id="sd">0</b></div>
 <p>Pick a mode for each side. Attacks convert between modes. The red bars show incoming garbage. R restarts.</p>
 <button id="rs">New match</button> <button id="dm">Watch demo</button>
 <div class="snd" id="net"><b>Online</b><label>Server <input id="nurl" type="text" value="http://localhost:8787" size="26" autocomplete="off"></label>
@@ -833,7 +833,7 @@ $("chL").onchange=function(){castSel.L=parseInt(this.value,10)||0};$("chR").onch
 
 // ----- online lobby glue -----
 let online=false,mySide="L",stallAt=0,readyMine=false;
-function netBase(){const v=$("nurl").value.trim();try{localStorage.setItem("versusServer",v)}catch(e){}return v}
+function netBase(){const v=$("nurl").value.trim();try{localStorage.setItem("puzzleAttackServer",v)}catch(e){}return v}
 function netMode(){return $("nmode").value}
 function netFillChars(){const sel=$("nchar"),k=netMode();let h="";CAST[k].forEach(function(c,i){h+='<option value="'+i+'">'+c.name+'</option>'});sel.innerHTML=h;if(!sel.value||+sel.value>1)sel.value="0"}
 function netPick(){NET.pick(netMode(),parseInt($("nchar").value,10)||0);readyMine=false;$("nready").textContent="Ready"}
@@ -855,7 +855,7 @@ NET.on("start",startOnline);
 NET.on("left",netLeft);
 NET.on("desync",function(d){if(done)return;done=true;globalThis.__desync=d;$("msg").textContent="Desync detected at tick "+d.f+". The two games diverged, so the match was stopped.";try{FX.end("DESYNC",false,"D")}catch(e){FX.errors.push(String(e))}});
 function netLeave(){NET.leave();online=false;lockSel(false);$("nroom").hidden=true;$("nstat").textContent="";$("ctlL").value="human";$("ctlR").value="human";FX.hideOverlay();startDemo()}
-try{const sv=localStorage.getItem("versusServer");if(sv)$("nurl").value=sv}catch(e){}
+try{const sv=localStorage.getItem("puzzleAttackServer");if(sv)$("nurl").value=sv}catch(e){}
 if(globalThis.VERSUS_SAME_ORIGIN){try{$("nurl").value=location.origin}catch(e){}}
 netFillChars();
 $("nhost").onclick=function(){NET.host(netBase())};
