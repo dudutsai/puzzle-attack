@@ -13,7 +13,7 @@ function makeClient(base,seed){
  let cb=null;const L={};const sb={document:{getElementById:E,activeElement:null},getComputedStyle:()=>({getPropertyValue:()=>'#000'}),performance:{now:()=>0},__l:L,addEventListener(ty,f){(L[ty]=L[ty]||[]).push(f)},
   requestAnimationFrame:f=>{cb=f},WebSocket:globalThis.WebSocket,fetch:globalThis.fetch,setInterval,clearInterval,setTimeout,Date,console};
  vm.createContext(sb);
- vm.runInContext(s+';globalThis.api={get A(){return A},get B(){return B},get rec(){return rec},get done(){return done},get online(){return online},get ML(){return ML},get MR(){return MR},get seed(){return seed},get held1(){return held1},get menuOpen(){return menuOpen},get NET(){return NET},get FX(){return FX},hash(){return [ML.m.hash(A),MR.m.hash(B)]}}',sb);
+ vm.runInContext(s+';globalThis.api={get A(){return A},get B(){return B},get rec(){return rec},get done(){return done},get online(){return online},get ML(){return ML},get MR(){return MR},get seed(){return seed},get held1(){return held1},get menuOpen(){return menuOpen},get attract(){return attract},get seed2(){return seed},get NET(){return NET},get FX(){return FX},hash(){return [ML.m.hash(A),MR.m.hash(B)]}}',sb);
  const api=sb.api,r=rng(seed);let t=0;const keys=['a','d','s','w',' '];
  return {api,E,msg:()=>E('msg').textContent,stat:()=>E('nstat').textContent,
   frame(){t+=1000/60+0.01;if(api.online&&!api.done&&r()<0.08){const k=keys[Math.floor(r()*5)];api.held1[k]=!api.held1[k]}cb(t)},
@@ -47,7 +47,15 @@ async function lobby(base,modes,chars){
   c.click('mlocal');c.set('mmR','bubble');c.click('mstart');ok(E('ctlL').value==='human'&&E('ctlR').value==='human'&&E('selR').value==='bubble','menu: local 2-player is human vs human');
   for(let i=0;i<300;i++)c.frame();ok(c.api.FX.errors.length===0,'menu: no FX errors in a local match');
   c.click('mb');c.click('monline');ok(E('m-online').hidden===false,'menu: Play online opens the lobby screen');c.click('mobk');ok(E('m-main').hidden===false&&E('m-online').hidden===true,'menu: Back returns to the main menu');
-  c.click('mdemo');ok(E('menu').hidden===true,'menu: Watch demo closes the menu');for(let i=0;i<200;i++)c.frame();ok(c.api.FX.errors.length===0,'menu: demo runs without errors')}
+  c.click('mdemo');ok(E('menu').hidden===true&&c.api.attract,'demo: Watch demo closes the menu and starts the bot demo');
+  ok(E('ctlL').value==='bot'&&E('ctlR').value==='bot','demo: both sides are bots');
+  const seen=new Set([c.api.seed]),modes=new Set([E('selL').value+'/'+E('selR').value]);let ended=0,fr=0;
+  for(;fr<40000&&seen.size<4;fr++){if(c.api.done)ended++;c.frame();seen.add(c.api.seed);modes.add(E('selL').value+'/'+E('selR').value)}
+  ok(seen.size>=4,'demo: keeps rematching with new seeds on its own ('+seen.size+' matches in '+fr+' frames)');ok(modes.size>=2,'demo: matchups are random ('+[...modes].join(', ')+')');
+  ok(c.api.attract&&c.api.FX.errors.length===0,'demo: still in demo mode, no FX errors');
+  c.key('keydown',{key:'x',target:{tagName:'BODY'},preventDefault(){}});ok(E('menu').hidden===false&&c.api.menuOpen,'demo: any key press returns to the menu');
+  c.click('mdemo');c.key('pointerdown',{});ok(E('menu').hidden===false,'demo: a click or tap also returns to the menu');
+  for(let i=0;i<200;i++)c.frame();ok(c.api.attract,'demo: keeps running behind the menu')}
  const core=await import(SRV+'src/room_core.mjs');
  // ---- room logic ----
  {const st=core.newRoom();let j=core.join(st);ok(j.slot===0,'first player gets slot 0');j=core.join(st);ok(j.slot===1,'second gets slot 1');

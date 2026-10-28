@@ -768,7 +768,7 @@ const NET=(function(){
 
 const K1={a:1,d:2,s:4,w:8," ":16},K2={ArrowLeft:1,ArrowRight:2,ArrowDown:4,ArrowUp:8,".":16};
 const held1={},held2={};
-let ML,MR,A,B,seed,rec,acc=0,last=0,done=false,demo=false,dt=0,cd=0;
+let ML,MR,A,B,seed,rec,acc=0,last=0,done=false,demo=false,dt=0,cd=0,attract=false,attractAt=0;
 const gL=$("cL").getContext("2d"),gR=$("cR").getContext("2d"),nL=$("nL").getContext("2d"),nR=$("nR").getContext("2d");
 let evLR=0,evRL=0;
 function fillCast(S,M){const sel=$("ch"+S);if(!sel)return;const k=M===MODES.blocks?"blocks":M===MODES.chain?"chain":M===MODES.panel?"panel":"bubble";let h="";CAST[k].forEach(function(c,i){h+='<option value="'+i+'">'+c.name+'</option>'});sel.innerHTML=h;sel.value=String(castSel[S])}
@@ -778,7 +778,7 @@ function tick(a,b,m1,m2){
  const r=take(b);if(r>0){const g=conv(MR,b,r);if(g>0){ML.recv(a,g);evRL=g}}}
 let memL={},memR={};
 function newStates(){const a=ML.m.newState(seed),b=MR.m.newState(seed^0x5bd1e995);if(ML.m===FB)a.pv=MR.m===FB?0:1;if(MR.m===FB)b.pv=ML.m===FB?0:1;return [a,b]}
-function start(o){demo=false;ML=MODES[$("selL").value];MR=MODES[$("selR").value];
+function start(o){demo=false;attract=false;ML=MODES[$("selL").value];MR=MODES[$("selR").value];
  $("cL").width=ML.w;$("cL").height=ML.h;$("cR").width=MR.w;$("cR").height=MR.h;
  $("hL").textContent="Left: "+ML.hint[0];$("hR").textContent="Right: "+MR.hint[1];
  $("kL").textContent=ML.lab;$("kR").textContent=MR.lab;
@@ -807,6 +807,9 @@ const DM={
   fire:function(k){return 0},recv:function(k,s){if(k===0){s.cur=9;return 16}return 0}}};
 function startDemo(){wantDemo=true;start();demo=true;dt=0;cd=0;FX.hideOverlay();
  $("msg").textContent="Demo: the right side ("+MR.name+") sets up an attack on the left side ("+ML.name+")."}
+function startAttract(){const ks=["blocks","chain","panel","bubble"],r=function(n){return Math.floor(Math.random()*n)};
+ $("selL").value=ks[r(4)];$("selR").value=ks[r(4)];castSel.L=r(2);castSel.R=r(2);$("ctlL").value="bot";$("ctlR").value="bot";wantDemo=false;
+ start();attract=true;attractAt=0;$("msg").textContent="Demo: two bots play, then a new match starts. Press any key or click to open the menu."}
 function demoInputs(){dt++;let m1=0,m2=0;const kl=$("selL").value,kr=$("selR").value;
  const say=function(x){$("msg").textContent=x};
  if(dt===1)DM[kr].setup(B);
@@ -842,6 +845,7 @@ const BOTS={
   if(m.plan==null)m.plan=BS.botAim(s);const d=m.plan-s.ang;if(d>0)return 1;if(d<0)return 2;return 16}};
 function control(S,s,mem,held){const key=$("sel"+S).value;return $("ctl"+S).value==="bot"?BOTS[key](s,mem):bits(held)}
 function frame(t){acc+=Math.min(t-last,100);last=t;
+ if(attract&&!demo){if(done){if(!attractAt)attractAt=t;if(t-attractAt>3500){FX.hideOverlay();startAttract()}}else if(rec.length>5400){startAttract()}}
  while(acc>=1000/60&&!done){acc-=1000/60;
   if(cd>0){cd-=1000/60;try{FX.countdown(cd);if(cd<=0)FX.go()}catch(e){FX.errors.push(String(e))}continue}
   let m1,m2;if(online){const f=rec.length;NET.sample(f,bits(held1)|bits(held2));const rk=NET.remote(f);
@@ -856,7 +860,8 @@ function frame(t){acc+=Math.min(t-last,100);last=t;
  try{FX.danger({L:FX.isDanger(ML,A),R:FX.isDanger(MR,B)});FX.faces(t,ML,MR);FX.frame(t)}catch(e){FX.errors.push(String(e))}
  render();requestAnimationFrame(frame)}
 function nk(e){return e.key.length===1?e.key.toLowerCase():e.key}
-addEventListener("keydown",function(e){const tg=e.target&&e.target.tagName;if(tg==="INPUT"||tg==="TEXTAREA"||tg==="SELECT"||menuOpen)return;const k=nk(e);if(k in K1){held1[k]=true;e.preventDefault()}else if(k in K2){held2[k]=true;e.preventDefault()}else if(k==="r"){if(!online){wantDemo=false;start()}}else if(k==="m"){FX.toggle()}});
+addEventListener("pointerdown",function(){if(attract&&!menuOpen)showMenu("main")});
+addEventListener("keydown",function(e){if(attract&&!menuOpen){showMenu("main");return}const tg=e.target&&e.target.tagName;if(tg==="INPUT"||tg==="TEXTAREA"||tg==="SELECT"||menuOpen)return;const k=nk(e);if(k in K1){held1[k]=true;e.preventDefault()}else if(k in K2){held2[k]=true;e.preventDefault()}else if(k==="r"){if(!online){wantDemo=false;start()}}else if(k==="m"){FX.toggle()}});
 addEventListener("keyup",function(e){const k=nk(e);if(k in K1)held1[k]=false;if(k in K2)held2[k]=false});
 $("chL").onchange=function(){castSel.L=parseInt(this.value,10)||0};$("chR").onchange=function(){castSel.R=parseInt(this.value,10)||0};$("rs").onclick=function(){if(online)return;wantDemo=false;start()};$("ovb").onclick=function(){if(online){NET.ready(netMode(),parseInt($("nchar").value,10)||0,true);$("msg").textContent="Waiting for your opponent to accept the rematch...";return}wantDemo=false;start()};$("snd").onclick=function(){FX.toggle()};$("vol").oninput=function(){FX.setVol(+this.value)};$("mus").onchange=function(){FX.setMusic(this.checked)};$("dm").onclick=function(){if(!online)startDemo()};$("selL").onchange=$("selR").onchange=function(){if(online)return;wantDemo?startDemo():start()};$("ctlL").onchange=$("ctlR").onchange=function(){if(online)return;wantDemo=false;start()};
 
@@ -883,7 +888,7 @@ NET.on("room",function(pl,slot){$("nroom").hidden=false;$("ncd").textContent=NET
 NET.on("start",startOnline);
 NET.on("left",netLeft);
 NET.on("desync",function(d){if(done)return;done=true;globalThis.__desync=d;$("msg").textContent="Desync detected at tick "+d.f+". The two games diverged, so the match was stopped.";try{FX.end("DESYNC",false,"D")}catch(e){FX.errors.push(String(e))}});
-function netLeave(){NET.leave();online=false;lockSel(false);$("nroom").hidden=true;$("nstat").textContent="";$("ctlL").value="human";$("ctlR").value="human";FX.hideOverlay();startDemo()}
+function netLeave(){NET.leave();online=false;lockSel(false);$("nroom").hidden=true;$("nstat").textContent="";$("ctlL").value="human";$("ctlR").value="human";FX.hideOverlay();startAttract()}
 try{const sv=localStorage.getItem("puzzleAttackServer");if(sv)$("nurl").value=sv}catch(e){}
 if(globalThis.VERSUS_SAME_ORIGIN){try{$("nurl").value=location.origin}catch(e){}}
 netFillChars();
@@ -912,12 +917,12 @@ function mStart(){const ks=["blocks","chain","panel","bubble"];
  $("ctlL").value="human";$("ctlR").value=menuKind==="cpu"?"bot":"human";wantDemo=false;hideMenu();start()}
 (function(){let h="";["blocks","chain","panel","bubble"].forEach(function(k){CAST[k].forEach(function(c){h+=charSVG(c,"idle")})});$("mcast").innerHTML=h})();
 $("mcpu").onclick=function(){mSetup("cpu")};$("mlocal").onclick=function(){mSetup("local")};
-$("monline").onclick=function(){showMenu("online")};$("mdemo").onclick=function(){hideMenu();startDemo()};
+$("monline").onclick=function(){showMenu("online")};$("mdemo").onclick=function(){hideMenu();startAttract()};
 $("mmL").onchange=function(){mFill("L")};$("mmR").onchange=function(){mFill("R")};$("mcL").onchange=function(){mPort("L")};$("mcR").onchange=function(){mPort("R")};
 $("mstart").onclick=mStart;$("msback").onclick=function(){showMenu("main")};
-$("mobk").onclick=function(){if(online||NET.connected)netLeave();else startDemo();showMenu("main")};
-$("mb").onclick=function(){if(online||NET.connected)netLeave();else{FX.hideOverlay();startDemo()}showMenu("main")};
-startDemo();requestAnimationFrame(frame);
+$("mobk").onclick=function(){if(online||NET.connected)netLeave();else startAttract();showMenu("main")};
+$("mb").onclick=function(){if(online||NET.connected)netLeave();else{FX.hideOverlay();startAttract()}showMenu("main")};
+startAttract();requestAnimationFrame(frame);
 </script>
 </body>
 </html>
