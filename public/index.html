@@ -44,6 +44,9 @@ select{font:inherit;background:var(--panel);color:var(--ink);border:1px solid va
 .mvs{align-self:center;font-weight:800;color:var(--muted)}.mlab{font-weight:700}.mpt{height:118px}.mpt svg{height:100%;width:100%}
 #m-setup h2,#m-online h2{margin:6px 0 10px}#m-online .snd{text-align:left;margin:0 0 6px}#m-online input{font:inherit}
 @media (prefers-reduced-motion:reduce){.mbtn{transition:none}}
+.srow{display:flex;align-items:center;justify-content:center;gap:12px;margin:6px 0 12px;font-weight:700}
+.sbtn{width:56px;height:56px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:50%;border:0;cursor:pointer;background:var(--accent);color:#fff}.sbtn svg{width:30px;height:30px}
+.slid{display:flex;align-items:center;gap:12px;max-width:340px;margin:8px auto}.slid span{width:110px;text-align:left}.slid input{flex:1;accent-color:var(--accent)}
 html{background:var(--bg);min-height:100%}.stat{gap:12px}
 body{min-height:100vh;background:radial-gradient(1200px 600px at 50% -10%,color-mix(in srgb,var(--accent) 14%,var(--bg)),var(--bg))}
 canvas{box-shadow:0 6px 22px rgba(0,0,0,.18),inset 0 0 0 1px var(--grid);transition:box-shadow .2s}
@@ -74,7 +77,7 @@ button{transition:transform .08s,filter .15s}button:hover{filter:brightness(1.1)
 <aside><h1>Puzzle Attack</h1><div class="stat"><span>Seed</span><b id="sd">0</b></div>
 <p>Pick a mode for each side. Attacks convert between modes. The red bars show incoming garbage. R restarts.</p>
 <button id="rs">New match</button> <button id="dm">Watch demo</button> <button id="mb">Menu</button>
-<div class="snd"><button id="snd">Sound: off (click to enable)</button><label><input type="checkbox" id="mus" checked> Music</label><label>Volume <input type="range" id="vol" min="0" max="1" step="0.05" value="0.7"></label><label>M toggles sound</label></div><p id="msg"></p></aside>
+<p id="msg"></p></aside>
 </main>
 <div class="menu" id="menu" role="dialog" aria-label="Main menu"><div class="mcard">
 <h1 class="mtitle">PUZZLE ATTACK</h1><p class="msub">Four puzzle games. One battle.</p><div class="mcast" id="mcast" aria-hidden="true"></div>
@@ -82,13 +85,19 @@ button{transition:transform .08s,filter .15s}button:hover{filter:brightness(1.1)
 <button class="mbtn" id="mcpu">Play vs CPU</button>
 <button class="mbtn" id="mlocal">Local 2 players</button>
 <button class="mbtn" id="monline">Play online</button>
-<button class="mbtn alt" id="mdemo">Watch demo</button></div>
+<button class="mbtn alt" id="mdemo">Watch demo</button>
+<button class="mbtn alt" id="msound">Sound</button></div>
 <p class="mnote">Pick any puzzle for each side. Attacks turn into the other side's kind of trash.</p></section>
 <section id="m-setup" hidden><h2 id="mst">Play vs CPU</h2><div class="mrow">
 <div class="mcol"><div class="mlab" id="mlL">You</div><div class="mpt" id="mpL"></div><select id="mmL" aria-label="Left puzzle"><option value="blocks">Falling blocks</option><option value="chain">Chain puzzle</option><option value="panel">Panel swap</option><option value="bubble">Bubble shooter</option></select><select id="mcL" aria-label="Left character"></select></div>
 <div class="mvs">VS</div>
 <div class="mcol"><div class="mlab" id="mlR">CPU</div><div class="mpt" id="mpR"></div><select id="mmR" aria-label="Right puzzle"><option value="random">Random</option><option value="blocks">Falling blocks</option><option value="chain">Chain puzzle</option><option value="panel">Panel swap</option><option value="bubble">Bubble shooter</option></select><select id="mcR" aria-label="Right character"></select></div></div>
 <p class="mnote" id="mhint"></p><div class="mlist row2"><button class="mbtn" id="mstart">Start</button><button class="mbtn alt" id="msback">Back</button></div></section>
+<section id="m-sound" hidden><h2>Sound</h2>
+<div class="srow"><button id="snd" class="sbtn" aria-label="Sound on, click to mute" aria-pressed="true"></button><span id="sndl">Sound on</span></div>
+<label class="slid"><span>Sound effects</span><input type="range" id="vsfx" min="0" max="1" step="0.05" value="0.8"></label>
+<label class="slid"><span>Music</span><input type="range" id="vmus" min="0" max="1" step="0.05" value="0.7"></label>
+<p class="mnote">Press M any time to mute or unmute.</p><div class="mlist row2"><button class="mbtn alt" id="msnb">Back</button></div></section>
 <section id="m-online" hidden><h2>Play online</h2>
 <div class="snd" id="net"><b>Online</b><label>Server <input id="nurl" type="text" value="http://localhost:8787" size="26" autocomplete="off"></label>
 <div><button id="nhost">Host a game</button> <input id="ncode" maxlength="5" size="6" placeholder="CODE" autocomplete="off" aria-label="Room code"> <button id="njoin">Join</button></div>
@@ -559,11 +568,11 @@ const castSel={L:0,R:1};
 // ===== Sound and polish layer. Display only: it reads game state and never changes the simulation. =====
 const FX=(function(){
  const reduced=(typeof matchMedia==="function")&&!!matchMedia("(prefers-reduced-motion: reduce)").matches;
- let cdN=-1,ac=null,master=null,sfxBus=null,musBus=null,noiseBuf=null,on=false,musicOn=true,vol=.7,mTimer=null,mNext=0,mStep=0,inten=0,intenT=0;
+ let wanted=true,cdN=-1,ac=null,master=null,sfxBus=null,musBus=null,noiseBuf=null,on=false,musicOn=true,vol=1,sfxVol=.8,musVol=.7,mTimer=null,mNext=0,mStep=0,inten=0,intenT=0;
  const prevMask={L:0,R:0},danger={L:false,R:false};
  function ensure(){if(ac)return true;const C=typeof AudioContext!=="undefined"?AudioContext:(typeof webkitAudioContext!=="undefined"?webkitAudioContext:null);if(!C)return false;
   ac=new C();master=ac.createGain();master.gain.value=vol;master.connect(ac.destination);
-  sfxBus=ac.createGain();sfxBus.gain.value=1;sfxBus.connect(master);musBus=ac.createGain();musBus.gain.value=.32;musBus.connect(master);
+  sfxBus=ac.createGain();sfxBus.gain.value=sfxVol;sfxBus.connect(master);musBus=ac.createGain();musBus.gain.value=.32*musVol;musBus.connect(master);
   noiseBuf=ac.createBuffer(1,ac.sampleRate,ac.sampleRate);const d=noiseBuf.getChannelData(0);let x=12345;for(let i=0;i<d.length;i++){x=(Math.imul(x,1664525)+1013904223)|0;d[i]=((x>>>9)/4194304)-1}
   return true}
  function pannerTo(pan,bus){if(!pan||!ac.createStereoPanner)return bus;const p=ac.createStereoPanner();p.pan.value=pan;p.connect(bus);return p}
@@ -601,7 +610,10 @@ const FX=(function(){
    if(inten>.4&&st%2===1)noise(.04,.03+inten*.03,0,6000,3000,t,musBus);
    mNext+=sp;mStep++}}
  function setOn(v){on=v;if(on){if(!ensure()){on=false;return}if(ac.state==="suspended"&&ac.resume)ac.resume();mNext=ac.currentTime+.05;if(!mTimer)mTimer=setInterval(music,80)}
-  const b=$("snd");if(b)b.textContent=on?"Sound: on":"Sound: off (click to enable)"}
+  paint()}
+ const ICON_ON='<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  ICON_OFF='<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor"/><path d="M16 9l5 6M21 9l-5 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+ function paint(){const b=$("snd");if(!b)return;b.innerHTML=wanted?ICON_ON:ICON_OFF;b.setAttribute&&(b.setAttribute("aria-pressed",wanted?"true":"false"),b.setAttribute("aria-label",wanted?"Sound on, click to mute":"Sound muted, click to unmute"));const l=$("sndl");if(l)l.textContent=wanted?"Sound on":"Sound off"}
  // ----- visuals -----
  const parts=[],texts=[],orbs=[],flashes=[],shk={L:0,R:0};let lastT=0;
  function rectOf(S){const el=$("c"+S),cw=el.width||200,ch=el.height||400,r=el.getBoundingClientRect?el.getBoundingClientRect():null;
@@ -682,8 +694,9 @@ const FX=(function(){
    else snd("land",pan);
    if(s.gq<p.gq)hit(S,p.gq-s.gq)}}
  return {
-  setOn:setOn,toggle:function(){setOn(!on)},isOn:function(){return on},
-  setVol:function(v){vol=v;if(master)master.gain.value=v},setMusic:function(v){musicOn=v},
+  setOn:setOn,toggle:function(){wanted=!wanted;setOn(wanted)},isOn:function(){return on},wanted:function(){return wanted},
+  unlock:function(){if(wanted&&!on)setOn(true)},paint:paint,
+  setVol:function(v){vol=v;if(master)master.gain.value=v},setSfx:function(v){sfxVol=v;if(sfxBus)sfxBus.gain.value=v},setMusicVol:function(v){musVol=v;if(musBus)musBus.gain.value=.32*v},getSfx:function(){return sfxVol},getMusicVol:function(){return musVol},preview:function(){try{if(on)snd("send",0,1)}catch(e){}},setMusic:function(v){musicOn=v},
   cap:cap,evt:evt,isDanger:isDanger,errors:[],
   sends:function(gLR,gRL){if(gLR>0){snd("send",-.5,gLR);orb("L","R",gLR);expr("L","happy",1200,"atk")}if(gRL>0){snd("send",.5,gRL);orb("R","L",gRL);expr("R","happy",1200,"atk")}},
   faces:faces,
@@ -860,10 +873,10 @@ function frame(t){acc+=Math.min(t-last,100);last=t;
  try{FX.danger({L:FX.isDanger(ML,A),R:FX.isDanger(MR,B)});FX.faces(t,ML,MR);FX.frame(t)}catch(e){FX.errors.push(String(e))}
  render();requestAnimationFrame(frame)}
 function nk(e){return e.key.length===1?e.key.toLowerCase():e.key}
-addEventListener("pointerdown",function(){if(attract&&!menuOpen)showMenu("main")});
-addEventListener("keydown",function(e){if(attract&&!menuOpen){showMenu("main");return}const tg=e.target&&e.target.tagName;if(tg==="INPUT"||tg==="TEXTAREA"||tg==="SELECT"||menuOpen)return;const k=nk(e);if(k in K1){held1[k]=true;e.preventDefault()}else if(k in K2){held2[k]=true;e.preventDefault()}else if(k==="r"){if(!online){wantDemo=false;start()}}else if(k==="m"){FX.toggle()}});
+addEventListener("pointerdown",function(){FX.unlock();if(attract&&!menuOpen)showMenu("main")});
+addEventListener("keydown",function(e){const tg=e.target&&e.target.tagName,typing=tg==="INPUT"||tg==="TEXTAREA"||tg==="SELECT";if(typing)return;FX.unlock();if(nk(e)==="m"){FX.toggle();saveSnd();return}if(attract&&!menuOpen){showMenu("main");return}if(menuOpen)return;const k=nk(e);if(k in K1){held1[k]=true;e.preventDefault()}else if(k in K2){held2[k]=true;e.preventDefault()}else if(k==="r"){if(!online){wantDemo=false;start()}}});
 addEventListener("keyup",function(e){const k=nk(e);if(k in K1)held1[k]=false;if(k in K2)held2[k]=false});
-$("chL").onchange=function(){castSel.L=parseInt(this.value,10)||0};$("chR").onchange=function(){castSel.R=parseInt(this.value,10)||0};$("rs").onclick=function(){if(online)return;wantDemo=false;start()};$("ovb").onclick=function(){if(online){NET.ready(netMode(),parseInt($("nchar").value,10)||0,true);$("msg").textContent="Waiting for your opponent to accept the rematch...";return}wantDemo=false;start()};$("snd").onclick=function(){FX.toggle()};$("vol").oninput=function(){FX.setVol(+this.value)};$("mus").onchange=function(){FX.setMusic(this.checked)};$("dm").onclick=function(){if(!online)startDemo()};$("selL").onchange=$("selR").onchange=function(){if(online)return;wantDemo?startDemo():start()};$("ctlL").onchange=$("ctlR").onchange=function(){if(online)return;wantDemo=false;start()};
+$("chL").onchange=function(){castSel.L=parseInt(this.value,10)||0};$("chR").onchange=function(){castSel.R=parseInt(this.value,10)||0};$("rs").onclick=function(){if(online)return;wantDemo=false;start()};$("ovb").onclick=function(){if(online){NET.ready(netMode(),parseInt($("nchar").value,10)||0,true);$("msg").textContent="Waiting for your opponent to accept the rematch...";return}wantDemo=false;start()};$("dm").onclick=function(){if(!online)startDemo()};$("selL").onchange=$("selR").onchange=function(){if(online)return;wantDemo?startDemo():start()};$("ctlL").onchange=$("ctlR").onchange=function(){if(online)return;wantDemo=false;start()};
 
 // ----- online lobby glue -----
 let online=false,mySide="L",stallAt=0,readyMine=false;
@@ -901,7 +914,7 @@ $("ncopy").onclick=function(){try{navigator.clipboard.writeText(NET.code)}catch(
 
 // ----- main menu -----
 let menuOpen=true,menuKind="cpu";
-function showMenu(screen){menuOpen=true;$("menu").hidden=false;["main","setup","online"].forEach(function(s){$("m-"+s).hidden=s!==screen});try{const f=$(screen==="main"?"mcpu":screen==="setup"?"mstart":"nhost");f.focus&&f.focus()}catch(e){}}
+function showMenu(screen){menuOpen=true;$("menu").hidden=false;["main","setup","online","sound"].forEach(function(s){$("m-"+s).hidden=s!==screen});try{const f=$(screen==="main"?"mcpu":screen==="setup"?"mstart":screen==="sound"?"snd":"nhost");f.focus&&f.focus()}catch(e){}}
 function hideMenu(){menuOpen=false;$("menu").hidden=true}
 function mFill(S){const k=$("mm"+S).value,sel=$("mc"+S);let h="";
  if(k==="random"){h='<option value="0">Random</option>';sel.innerHTML=h;sel.value="0";$("mp"+S).innerHTML='<div style="font-size:64px;line-height:118px">?</div>'}
@@ -922,7 +935,15 @@ $("mmL").onchange=function(){mFill("L")};$("mmR").onchange=function(){mFill("R")
 $("mstart").onclick=mStart;$("msback").onclick=function(){showMenu("main")};
 $("mobk").onclick=function(){if(online||NET.connected)netLeave();else startAttract();showMenu("main")};
 $("mb").onclick=function(){if(online||NET.connected)netLeave();else{FX.hideOverlay();startAttract()}showMenu("main")};
-startAttract();requestAnimationFrame(frame);
+
+// ----- sound settings (saved per browser) -----
+function saveSnd(){try{localStorage.setItem("puzzleAttackSound",JSON.stringify({s:+$("vsfx").value,m:+$("vmus").value,w:FX.wanted()}))}catch(e){}}
+try{const j=JSON.parse(localStorage.getItem("puzzleAttackSound")||"null");if(j){const s=Math.max(0,Math.min(1,+j.s)),m=Math.max(0,Math.min(1,+j.m));if(s===s){$("vsfx").value=s;FX.setSfx(s)}if(m===m){$("vmus").value=m;FX.setMusicVol(m)}if(j.w===false)FX.toggle()}}catch(e){}
+$("msound").onclick=function(){showMenu("sound")};$("msnb").onclick=function(){showMenu("main")};
+$("snd").onclick=function(){FX.toggle();saveSnd()};
+$("vsfx").oninput=function(){FX.setSfx(+this.value);saveSnd()};$("vsfx").onchange=function(){FX.preview()};
+$("vmus").oninput=function(){FX.setMusicVol(+this.value);saveSnd()};
+FX.paint();startAttract();requestAnimationFrame(frame);
 </script>
 </body>
 </html>
