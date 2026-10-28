@@ -10,25 +10,44 @@ function makeClient(base,seed){
  const el={};const ctx2=new Proxy({},{get:(o,k)=>typeof k==='string'&&/Style|Width|Alpha/.test(k)?0:function(){},set:()=>true});
  const defaults={nurl:base,ncode:'',nmode:'blocks',nchar:'0'};
  const E=i=>el[i]||(el[i]={value:i in defaults?defaults[i]:i.startsWith('ctl')?'human':'blocks',width:0,height:0,textContent:'',innerHTML:'',hidden:false,style:{},getContext:()=>ctx2,blur(){}});
- let cb=null;const sb={document:{getElementById:E,activeElement:null},getComputedStyle:()=>({getPropertyValue:()=>'#000'}),performance:{now:()=>0},addEventListener(){},
+ let cb=null;const L={};const sb={document:{getElementById:E,activeElement:null},getComputedStyle:()=>({getPropertyValue:()=>'#000'}),performance:{now:()=>0},__l:L,addEventListener(ty,f){(L[ty]=L[ty]||[]).push(f)},
   requestAnimationFrame:f=>{cb=f},WebSocket:globalThis.WebSocket,fetch:globalThis.fetch,setInterval,clearInterval,setTimeout,Date,console};
  vm.createContext(sb);
- vm.runInContext(s+';globalThis.api={get A(){return A},get B(){return B},get rec(){return rec},get done(){return done},get online(){return online},get ML(){return ML},get MR(){return MR},get seed(){return seed},get held1(){return held1},get NET(){return NET},get FX(){return FX},hash(){return [ML.m.hash(A),MR.m.hash(B)]}}',sb);
+ vm.runInContext(s+';globalThis.api={get A(){return A},get B(){return B},get rec(){return rec},get done(){return done},get online(){return online},get ML(){return ML},get MR(){return MR},get seed(){return seed},get held1(){return held1},get menuOpen(){return menuOpen},get NET(){return NET},get FX(){return FX},hash(){return [ML.m.hash(A),MR.m.hash(B)]}}',sb);
  const api=sb.api,r=rng(seed);let t=0;const keys=['a','d','s','w',' '];
  return {api,E,msg:()=>E('msg').textContent,stat:()=>E('nstat').textContent,
   frame(){t+=1000/60+0.01;if(api.online&&!api.done&&r()<0.08){const k=keys[Math.floor(r()*5)];api.held1[k]=!api.held1[k]}cb(t)},
-  click(id){E(id).onclick()},set(id,v){E(id).value=v;if(E(id).onchange)E(id).onchange()}}}
+  key(ty,ev){(L[ty]||[]).forEach(f=>f(ev))},click(id){E(id).onclick()},set(id,v){E(id).value=v;if(E(id).onchange)E(id).onchange()}}}
 
 async function pump(cs,cond,max){for(let i=0;i<max;i++){for(const c of cs)c.frame();await sleep(0);if(cond&&cond())return true}return !cond}
 async function lobby(base,modes,chars){
  const h=makeClient(base,11),g=makeClient(base,22);
  h.click('nhost');for(let i=0;i<200&&!h.api.NET.code;i++)await sleep(5);
  const code=h.api.NET.code;
- g.E('ncode').value=code.toLowerCase();g.click('njoin');for(let i=0;i<200&&g.api.NET.slot<0;i++)await sleep(5);
+ g.E('ncode').value=code.toLowerCase();g.click('njoin');for(let i=0;i<600&&(g.api.NET.slot<0||h.api.NET.slot<0);i++)await sleep(5);
  h.set('nmode',modes[0]);g.set('nmode',modes[1]);h.set('nchar',String(chars[0]));g.set('nchar',String(chars[1]));await sleep(30);
  return {h,g,code}}
 
 (async()=>{
+ // ---- main menu and keyboard ----
+ {const c=makeClient('http://x',7),E=c.E;
+  ok(E('menu').hidden===false&&c.api.menuOpen,'menu: shown at start');
+  c.click('mcpu');ok(E('m-setup').hidden===false&&E('m-main').hidden===true,'menu: Play vs CPU opens the setup screen');
+  c.set('mmL','panel');c.set('mmR','random');c.click('mstart');
+  ok(E('menu').hidden===true&&!c.api.menuOpen,'menu: Start closes the menu');
+  ok(E('ctlL').value==='human'&&E('ctlR').value==='bot'&&E('selL').value==='panel','menu: CPU match is human (left) vs bot (right), left mode honoured');
+  for(let i=0;i<400;i++)c.frame();ok(c.api.rec.length>100&&!c.api.online,'menu: CPU match runs');ok(c.api.FX.errors.length===0,'menu: no FX errors in a CPU match');
+  // bug: letters A D S W (used by the game) could not be typed into the room-code or server boxes
+  let prevented=false;c.key('keydown',{key:'a',target:{tagName:'INPUT'},preventDefault(){prevented=true}});
+  ok(!prevented&&!c.api.held1.a,'typing in a text box is not swallowed by game keys');
+  c.key('keydown',{key:'a',target:{tagName:'BODY'},preventDefault(){prevented=true}});ok(prevented&&c.api.held1.a,'game keys still work outside text boxes');
+  c.key('keyup',{key:'a',target:{tagName:'BODY'}});
+  c.click('mb');ok(E('menu').hidden===false,'menu: the Menu button reopens it');
+  prevented=false;c.key('keydown',{key:'d',target:{tagName:'BODY'},preventDefault(){prevented=true}});ok(!prevented&&!c.api.held1.d,'game keys are ignored while the menu is open');
+  c.click('mlocal');c.set('mmR','bubble');c.click('mstart');ok(E('ctlL').value==='human'&&E('ctlR').value==='human'&&E('selR').value==='bubble','menu: local 2-player is human vs human');
+  for(let i=0;i<300;i++)c.frame();ok(c.api.FX.errors.length===0,'menu: no FX errors in a local match');
+  c.click('mb');c.click('monline');ok(E('m-online').hidden===false,'menu: Play online opens the lobby screen');c.click('mobk');ok(E('m-main').hidden===false&&E('m-online').hidden===true,'menu: Back returns to the main menu');
+  c.click('mdemo');ok(E('menu').hidden===true,'menu: Watch demo closes the menu');for(let i=0;i<200;i++)c.frame();ok(c.api.FX.errors.length===0,'menu: demo runs without errors')}
  const core=await import(SRV+'src/room_core.mjs');
  // ---- room logic ----
  {const st=core.newRoom();let j=core.join(st);ok(j.slot===0,'first player gets slot 0');j=core.join(st);ok(j.slot===1,'second gets slot 1');
