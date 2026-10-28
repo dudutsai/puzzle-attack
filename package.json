@@ -1,0 +1,11 @@
+{
+  "name": "versus-relay",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev:local": "node dev/node_server.mjs 8787",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": { "wrangler": "^4" }
+}

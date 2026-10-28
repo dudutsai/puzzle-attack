@@ -1,0 +1,19 @@
+name = "versus-relay"
+main = "src/worker.mjs"
+compatibility_date = "2025-09-01"
+
+# The game page is served from ./public by the same Worker, so one deploy hosts the page and the relay.
+[assets]
+directory = "./public"
+
+[[durable_objects.bindings]]
+name = "ROOMS"
+class_name = "Room"
+
+# The free plan only supports SQLite-backed Durable Objects.
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Room"]
+
+# [vars]
+# ALLOWED_ORIGIN = "https://your-game-site.example"   # restrict /create to your own page
