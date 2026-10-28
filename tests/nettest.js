@@ -46,11 +46,14 @@ async function lobby(base,modes,chars){
   prevented=false;c.key('keydown',{key:'d',target:{tagName:'BODY'},preventDefault(){prevented=true}});ok(!prevented&&!c.api.held1.d,'game keys are ignored while the menu is open');
   c.click('mlocal');c.set('mmR','bubble');c.click('mstart');ok(E('ctlL').value==='human'&&E('ctlR').value==='human'&&E('selR').value==='bubble','menu: local 2-player is human vs human');
   for(let i=0;i<300;i++)c.frame();ok(c.api.FX.errors.length===0,'menu: no FX errors in a local match');
-  c.click('mb');c.click('msound');ok(E('m-sound').hidden===false&&E('m-main').hidden===true,'sound: the Sound button opens the sound menu');
-  ok(c.api.FX.wanted(),'sound: on by default');c.click('snd');ok(!c.api.FX.wanted(),'sound: the speaker button mutes');c.click('snd');ok(c.api.FX.wanted(),'sound: and unmutes');
+  c.click('mb');  ok(/id="spop" hidden/.test(fs.readFileSync(HTML,'utf8')),'sound: settings start closed');E('spop').hidden=true; // the test DOM does not reflect the hidden attributec.click('sbtn');ok(E('spop').hidden===false,'sound: the speaker button in the game opens the sound settings, even over the menu');
+  ok(c.api.FX.wanted(),'sound: on by default');c.click('snd');ok(!c.api.FX.wanted(),'sound: the mute button mutes');c.click('snd');ok(c.api.FX.wanted(),'sound: and unmutes');
   E('vsfx').value='0.3';E('vsfx').oninput();E('vmus').value='0.1';E('vmus').oninput();ok(Math.abs(c.api.FX.getSfx()-0.3)<1e-9&&Math.abs(c.api.FX.getMusicVol()-0.1)<1e-9,'sound: effects and music have separate sliders');
   c.key('keydown',{key:'m',target:{tagName:'BODY'},preventDefault(){}});ok(!c.api.FX.wanted(),'sound: M mutes even while a menu is open');c.key('keydown',{key:'m',target:{tagName:'BODY'},preventDefault(){}});
-  c.click('msnb');ok(E('m-main').hidden===false,'sound: Back returns to the main menu');
+  c.key('keydown',{key:'Escape',target:{tagName:'BODY'},preventDefault(){}});ok(E('spop').hidden===true,'sound: Escape closes the sound settings');
+  c.click('sbtn');c.key('pointerdown',{target:{closest:()=>null}});ok(E('spop').hidden===true,'sound: clicking elsewhere closes the sound settings');
+  c.click('sbtn');c.key('pointerdown',{target:{closest:s=>s==='#sndwrap'?{}:null}});ok(E('spop').hidden===false,'sound: clicking inside the settings keeps them open');c.click('sbtn');
+  ok(E('m-main').hidden===false,'sound: opening the settings does not change the menu screen');
   c.click('mb');c.click('monline');ok(E('m-online').hidden===false,'menu: Play online opens the lobby screen');c.click('mobk');ok(E('m-main').hidden===false&&E('m-online').hidden===true,'menu: Back returns to the main menu');
   c.click('mdemo');ok(E('menu').hidden===true&&c.api.attract,'demo: Watch demo closes the menu and starts the bot demo');
   ok(E('ctlL').value==='bot'&&E('ctlR').value==='bot','demo: both sides are bots');
